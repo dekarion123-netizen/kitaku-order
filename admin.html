@@ -195,13 +195,17 @@ function orderHTML(o){
   let h = '<div class="order'+(o.status==="new"?" isnew":"")+'" data-id="'+o.id+'">';
   h += '<div class="t1">'+esc(o.customer_name || "（名前なし）")+' 様<span class="badge st-'+o.status+'">'+ST_LABEL[o.status]+'</span>'
      + (o.island ? '<span class="badge island">島割</span>' : '') + '</div>';
-  h += '<div class="t2">'+when+' 受付／希望：'+esc(o.requested_time || "今すぐ")+'</div>';
+  h += '<div class="t2">'+when+' 受付'+(o.eta_min ? '／到着目安：約'+o.eta_min+'分（送信済み）' : '')+'</div>';
   h += '<div class="route">'+esc(o.pickup)+' → '+esc(o.destination)+'</div>';
   if (o.phone) h += '<div class="t2">電話：<a class="tel" href="tel:'+esc(o.phone.replace(/[^0-9+]/g,""))+'">'+esc(o.phone)+'</a></div>';
   if (o.car_info) h += '<div class="t2">車：'+esc(o.car_info)+'</div>';
   if (o.est_fare) h += '<div class="t2">料金目安：'+yen(o.est_fare)+'</div>';
   if (o.status === "done" && o.fare) h += '<div class="t2">確定料金：'+yen(o.fare)+'（日報に登録済み）</div>';
   if (o.memo) h += '<div class="t2">備考：'+esc(o.memo)+'</div>';
+  if (o.status === "new" || o.status === "accepted"){
+    h += '<div class="t2" style="margin-top:6px">到着目安をお客さんへ送信：</div><div class="acts">'
+       + [10,15,20,30,45,60].map(m => '<button class="btn btn-sub btn-small" data-eta="'+m+'">'+m+'分</button>').join("") + '</div>';
+  }
   if (o.status === "new"){
     h += '<div class="acts"><button class="btn btn-main" data-act="accept">受ける</button><button class="btn btn-danger" data-act="cancel">取消</button></div>';
   } else if (o.status === "accepted"){
@@ -240,6 +244,15 @@ $("orderList").addEventListener("input", e => {
   recalcDoneForm(wrap);
 });
 $("orderList").addEventListener("click", async e => {
+  const etaBtn = e.target.closest("[data-eta]");
+  if (etaBtn){
+    const card2 = e.target.closest(".order"); const o2 = findOrder(card2.dataset.id); if (!o2) return;
+    etaBtn.disabled = true;
+    const upd = { eta_min: parseInt(etaBtn.dataset.eta) };
+    if (o2.status === "new"){ upd.status = "accepted"; upd.accepted_at = new Date().toISOString(); }
+    await sb.from("orders").update(upd).eq("id", o2.id);
+    loadOrders(); return;
+  }
   const btn = e.target.closest("[data-act]"); if (!btn) return;
   const card = e.target.closest(".order"); const o = findOrder(card.dataset.id); if (!o) return;
   const act = btn.dataset.act;

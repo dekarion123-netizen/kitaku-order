@@ -68,22 +68,8 @@ a.tel{color:var(--navy);font-weight:700}
     <label>送り先（必須）</label>
     <input id="fDest" placeholder="例：真栄里の自宅、白保">
     <button type="button" class="btn btn-gps" id="geoBtn">送り先から料金の目安を出す</button>
-    <label>希望時刻</label>
-    <div class="seg" id="timeSeg">
-      <button type="button" data-v="now" class="on">今すぐ</button>
-      <button type="button" data-v="reserve">時刻を指定</button>
-    </div>
-    <div id="timeWrap" class="hidden">
-      <label>迎え希望時刻</label>
-      <input id="fTime" type="time">
-    </div>
     <label>車の情報（任意）</label>
     <input id="fCar" placeholder="例：白のフィット、ナンバー4058、MT／左ハンドルなど">
-    <label>料金区分</label>
-    <div class="seg" id="islandSeg">
-      <button type="button" data-v="0" class="on">一般料金</button>
-      <button type="button" data-v="1">島割（島にお住まいの方）</button>
-    </div>
     <label>備考（任意）</label>
     <textarea id="fMemo" rows="2" placeholder="経由先がある場合は事前にお知らせください"></textarea>
     <div style="height:10px"></div>
@@ -97,7 +83,10 @@ a.tel{color:var(--navy);font-weight:700}
   <div class="card hidden" id="doneCard">
     <h2>受け付けました</h2>
     <div>受付番号：<b id="doneId"></b></div>
-    <div class="note" style="margin-top:8px">ドライバーが内容を確認して向かいます。混雑状況により、お電話で到着時刻をご連絡する場合があります。そのままお待ちください。</div>
+    <div id="statusBox" style="margin-top:10px"></div>
+    <div class="note" style="margin-top:8px">この画面を開いたままでいると、お店からの到着目安が表示されます。混雑状況により、お電話でご連絡する場合もあります。</div>
+    <div style="height:10px"></div>
+    <button type="button" class="btn btn-sub" id="newOrderBtn" style="width:100%">新しい依頼をする</button>
   </div>
 
   <div class="card">
@@ -157,15 +146,14 @@ function wireSeg(id, cb){
     b.classList.add("on"); if (cb) cb();
   }));
 }
-wireSeg("timeSeg", () => { $("timeWrap").classList.toggle("hidden", segVal("timeSeg") !== "reserve"); });
-wireSeg("islandSeg", refreshEst);
+
 
 function refreshEst(){
   const box = $("estBox");
   if (pickupCoord && destCoord){
     const road = haversineKm(pickupCoord.lat, pickupCoord.lon, destCoord.lat, destCoord.lon) * 1.35;
-    const fare = segVal("islandSeg") === "1" ? bandFareIsland(road) : bandFareGeneral(road);
-    box.innerHTML = '料金の目安（約' + road.toFixed(1) + 'km想定）：<span class="est">' + yen(fare) + '</span> 前後';
+    const fare = bandFareGeneral(road);
+    box.innerHTML = '料金の目安・一般料金（約' + road.toFixed(1) + 'km想定）：<span class="est">' + yen(fare) + '</span> 前後';
     box.dataset.estFare = fare; box.dataset.estKm = road.toFixed(1);
   } else {
     box.textContent = "";
@@ -214,7 +202,6 @@ $("submitBtn").addEventListener("click", async () => {
     msg.textContent = "電話番号・迎え場所・送り先は必須です"; msg.className = "msg err"; return;
   }
   const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "送信中…";
-  const reserve = segVal("timeSeg") === "reserve";
   const oid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === "x" ? r : (r&0x3|0x8)).toString(16); });
   const row = {
     id: oid,
@@ -228,8 +215,8 @@ $("submitBtn").addEventListener("click", async () => {
     dest_lat: destCoord ? destCoord.lat : null,
     dest_lon: destCoord ? destCoord.lon : null,
     car_info: $("fCar").value.trim() || null,
-    requested_time: reserve ? ("時刻指定 " + ($("fTime").value || "")) : "今すぐ",
-    island: segVal("islandSeg") === "1",
+    requested_time: null,
+    island: false,
     est_fare: $("estBox").dataset.estFare ? parseInt($("estBox").dataset.estFare) : null,
     memo: $("fMemo").value.trim() || null
   };
@@ -241,8 +228,40 @@ $("submitBtn").addEventListener("click", async () => {
   $("doneId").textContent = oid.slice(0, 8).toUpperCase();
   $("formCard").classList.add("hidden");
   $("doneCard").classList.remove("hidden");
+  try{ localStorage.setItem("kitaku-last-order", JSON.stringify({id: oid, at: Date.now()})); }catch(e){}
+  startStatusPoll(oid);
   window.scrollTo({top: 0, behavior: "smooth"});
 });
+
+/* お店からの到着目安の表示 */
+let statusTimer = null;
+async function pollStatus(id){
+  const { data, error } = await sb.rpc("get_order_status", { p_id: id });
+  if (error || !data || !data.length) return;
+  const s = data[0]; const box = $("statusBox"); if (!box) return;
+  if (s.status === "new") box.innerHTML = '<div class="note">お店が注文を確認しています…</div>';
+  else if (s.status === "accepted") box.innerHTML = s.eta_min
+    ? '<div class="est">約' + s.eta_min + '分で到着します</div><div class="note">ドライバーが向かっています</div>'
+    : '<div class="est">受け付けました</div><div class="note">ドライバーが向かっています</div>';
+  else if (s.status === "done"){ box.innerHTML = '<div class="note">ご利用ありがとうございました</div>'; clearInterval(statusTimer); }
+  else if (s.status === "cancelled"){ box.innerHTML = '<div class="note">今回は受け付けできませんでした。お手数ですがお電話ください：090-9789-5588</div>'; clearInterval(statusTimer); }
+}
+function startStatusPoll(id){ pollStatus(id); clearInterval(statusTimer); statusTimer = setInterval(() => pollStatus(id), 20000); }
+$("newOrderBtn").addEventListener("click", () => {
+  try{ localStorage.removeItem("kitaku-last-order"); }catch(e){}
+  clearInterval(statusTimer);
+  $("doneCard").classList.add("hidden");
+  $("formCard").classList.remove("hidden");
+});
+try {
+  const saved = JSON.parse(localStorage.getItem("kitaku-last-order") || "null");
+  if (saved && saved.id && Date.now() - saved.at < 24*3600*1000){
+    $("doneId").textContent = saved.id.slice(0, 8).toUpperCase();
+    $("formCard").classList.add("hidden");
+    $("doneCard").classList.remove("hidden");
+    startStatusPoll(saved.id);
+  }
+} catch(e){}
 </script>
 </body>
 </html>
