@@ -240,8 +240,8 @@ async function pollStatus(id){
   if (error || !data || !data.length) return;
   const s = data[0]; const box = $("statusBox"); if (!box) return;
   if (s.status === "new") box.innerHTML = '<div class="note">お店が注文を確認しています…</div>';
-  else if (s.status === "accepted") box.innerHTML = s.eta_min
-    ? '<div class="est">約' + s.eta_min + '分で到着します</div><div class="note">ドライバーが向かっています</div>'
+  else if (s.status === "accepted") box.innerHTML = (s.eta_min != null)
+    ? '<div class="est">約' + s.eta_min + (s.eta_max ? '〜' + s.eta_max : '') + '分で到着します</div><div class="note">ドライバーが向かっています</div>'
     : '<div class="est">受け付けました</div><div class="note">ドライバーが向かっています</div>';
   else if (s.status === "done"){ box.innerHTML = '<div class="note">ご利用ありがとうございました</div>'; clearInterval(statusTimer); }
   else if (s.status === "cancelled"){ box.innerHTML = '<div class="note">今回は受け付けできませんでした。お手数ですがお電話ください：090-9789-5588</div>'; clearInterval(statusTimer); }

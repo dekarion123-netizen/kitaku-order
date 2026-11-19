@@ -46,6 +46,7 @@ html[data-theme="dark"] .seg button.on{background:var(--navy2)}
 .order .t2{color:var(--sub);font-size:13px;margin-top:2px}
 .order .route{font-size:15px;margin-top:4px}
 .order .acts{display:flex;gap:8px;margin-top:8px}
+.etarow{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .order .acts button{flex:1}
 .badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;background:var(--chip);color:var(--chiptxt);margin-left:6px;vertical-align:2px}
 .badge.island{background:var(--islbg);color:var(--green)}
@@ -177,6 +178,7 @@ $("filterSeg").querySelectorAll("button").forEach(b => b.addEventListener("click
   b.classList.add("on"); renderOrders();
 }));
 const ST_LABEL = { new:"新規", accepted:"対応中", done:"完了", cancelled:"取消" };
+const ETA_RANGES = [[10,15],[15,20],[20,25],[25,30],[30,35],[35,40],[40,45],[45,50],[50,55],[55,60],[60,65],[65,70],[70,75],[75,80],[80,85],[85,90]];
 async function loadOrders(){
   const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending:false }).limit(100);
   if (error){ $("listMsg").textContent = "読み込みに失敗しました"; $("listMsg").className = "msg err"; return; }
@@ -195,7 +197,7 @@ function orderHTML(o){
   let h = '<div class="order'+(o.status==="new"?" isnew":"")+'" data-id="'+o.id+'">';
   h += '<div class="t1">'+esc(o.customer_name || "（名前なし）")+' 様<span class="badge st-'+o.status+'">'+ST_LABEL[o.status]+'</span>'
      + (o.island ? '<span class="badge island">島割</span>' : '') + '</div>';
-  h += '<div class="t2">'+when+' 受付'+(o.eta_min ? '／到着目安：約'+o.eta_min+'分（送信済み）' : '')+'</div>';
+  h += '<div class="t2">'+when+' 受付'+(o.eta_min ? '／到着目安：約'+o.eta_min+(o.eta_max ? '〜'+o.eta_max : '')+'分（送信済み）' : '')+'</div>';
   h += '<div class="route">'+esc(o.pickup)+' → '+esc(o.destination)+'</div>';
   if (o.phone) h += '<div class="t2">電話：<a class="tel" href="tel:'+esc(o.phone.replace(/[^0-9+]/g,""))+'">'+esc(o.phone)+'</a></div>';
   if (o.car_info) h += '<div class="t2">車：'+esc(o.car_info)+'</div>';
@@ -203,8 +205,8 @@ function orderHTML(o){
   if (o.status === "done" && o.fare) h += '<div class="t2">確定料金：'+yen(o.fare)+'（日報に登録済み）</div>';
   if (o.memo) h += '<div class="t2">備考：'+esc(o.memo)+'</div>';
   if (o.status === "new" || o.status === "accepted"){
-    h += '<div class="t2" style="margin-top:6px">到着目安をお客さんへ送信：</div><div class="acts">'
-       + [10,15,20,30,45,60].map(m => '<button class="btn btn-sub btn-small" data-eta="'+m+'">'+m+'分</button>').join("") + '</div>';
+    h += '<div class="t2" style="margin-top:6px">到着目安をお客さんへ送信：</div><div class="etarow">'
+       + ETA_RANGES.map(r => '<button class="btn btn-sub btn-small" data-eta-min="'+r[0]+'" data-eta-max="'+r[1]+'">'+r[0]+'〜'+r[1]+'分</button>').join("") + '</div>';
   }
   if (o.status === "new"){
     h += '<div class="acts"><button class="btn btn-main" data-act="accept">受ける</button><button class="btn btn-danger" data-act="cancel">取消</button></div>';
@@ -244,11 +246,11 @@ $("orderList").addEventListener("input", e => {
   recalcDoneForm(wrap);
 });
 $("orderList").addEventListener("click", async e => {
-  const etaBtn = e.target.closest("[data-eta]");
+  const etaBtn = e.target.closest("[data-eta-min]");
   if (etaBtn){
     const card2 = e.target.closest(".order"); const o2 = findOrder(card2.dataset.id); if (!o2) return;
     etaBtn.disabled = true;
-    const upd = { eta_min: parseInt(etaBtn.dataset.eta) };
+    const upd = { eta_min: parseInt(etaBtn.dataset.etaMin), eta_max: parseInt(etaBtn.dataset.etaMax) };
     if (o2.status === "new"){ upd.status = "accepted"; upd.accepted_at = new Date().toISOString(); }
     await sb.from("orders").update(upd).eq("id", o2.id);
     loadOrders(); return;
