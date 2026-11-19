@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KITAKU 受注画面</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#33475e">
+<script>try{var _t=localStorage.getItem("nippo-theme");if(!_t)_t=(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";document.documentElement.dataset.theme=_t;}catch(e){document.documentElement.dataset.theme="light";}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#3c5a7d;--navy2:#54708f;--bg:#f4f3ef;--card:#fdfdfb;--line:#d8d5cc;--txt:#2e3138;--sub:#6a7078;--green:#3d7a54;--red:#a04a44;--amber:#96702a;--head:#33475e;--chip:#e8ebee;--chiptxt:#3c5a7d;--input:#ffffff;--dangerbg:#f6e3e1;--islbg:#e3efe6;--halfbg:#f7ecd2;--newbg:#fdeeda}
+html[data-theme="dark"]{--navy:#8fb0d8;--navy2:#33567f;--bg:#17191d;--card:#212429;--line:#3b4048;--txt:#e3e1da;--sub:#9aa1ab;--green:#7fb894;--red:#e08d85;--amber:#dcb26a;--head:#1d2733;--chip:#2b3038;--chiptxt:#cfd6de;--input:#26292f;--dangerbg:#3d2725;--islbg:#24382b;--halfbg:#3d3421;--newbg:#3a2f1c;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--txt);font-size:15px}
+header{background:var(--head);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+header .ttl{font-weight:700;font-size:17px}
+header button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:8px;padding:5px 10px;font-size:12px}
+header .hbtns{display:flex;gap:8px;align-items:center}
+main{max-width:1180px;margin:0 auto;padding:12px 12px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+h2{font-size:15px;margin:2px 0 10px;color:var(--navy)}
+.row{display:flex;gap:8px}
+.row>*{flex:1;min-width:0}
+label{display:block;font-size:12px;color:var(--sub);margin:8px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:16px;background:var(--input);color:var(--txt)}
+.btn{display:inline-block;border:none;border-radius:9px;padding:11px 14px;font-size:14px;font-weight:600;cursor:pointer;text-align:center}
+.btn-main{background:var(--navy);color:#fff;width:100%}
+html[data-theme="dark"] .btn-main{background:var(--navy2)}
+.btn-sub{background:var(--chip);color:var(--chiptxt)}
+.btn-danger{background:var(--dangerbg);color:var(--red)}
+.btn-small{padding:7px 10px;font-size:13px}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{flex:1;padding:10px 4px;background:var(--input);border:none;font-size:14px;cursor:pointer;color:var(--sub)}
+.seg button.on{background:var(--navy);color:#fff;font-weight:700}
+html[data-theme="dark"] .seg button.on{background:var(--navy2)}
+.msg{font-size:13px;margin:8px 0;min-height:18px}
+.msg.ok{color:var(--green)}.msg.err{color:var(--red)}
+.hidden{display:none!important}
+.order{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--card)}
+.order.isnew{background:var(--newbg)}
+.order .t1{font-weight:700}
+.order .t2{color:var(--sub);font-size:13px;margin-top:2px}
+.order .route{font-size:15px;margin-top:4px}
+.order .acts{display:flex;gap:8px;margin-top:8px}
+.order .acts button{flex:1}
+.badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;background:var(--chip);color:var(--chiptxt);margin-left:6px;vertical-align:2px}
+.badge.island{background:var(--islbg);color:var(--green)}
+.badge.st-new{background:var(--halfbg);color:var(--amber)}
+.badge.st-accepted{background:var(--islbg);color:var(--green)}
+a.tel{color:var(--navy);font-weight:700}
+.doneform{border-top:1px dashed var(--line);margin-top:10px;padding-top:6px}
+@media (min-width:1000px){
+  #orderList{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:start}
+}
+</style>
+</head>
+<body>
+<div id="loginRoot" class="hidden">
+  <header><div class="ttl">KITAKU 受注画面</div><button type="button" class="themeBtn">ダークに切替</button></header>
+  <main>
+    <div class="card">
+      <h2>ログイン</h2>
+      <label>メールアドレス</label>
+      <input id="loginEmail" type="email" autocomplete="username">
+      <label>パスワード</label>
+      <input id="loginPass" type="password" autocomplete="current-password">
+      <div style="height:12px"></div>
+      <button class="btn btn-main" id="loginBtn">ログイン</button>
+      <div class="msg" id="loginMsg"></div>
+    </div>
+  </main>
+</div>
+
+<div id="appRoot" class="hidden">
+  <header>
+    <div class="ttl">KITAKU 受注画面</div>
+    <div class="hbtns"><button type="button" class="themeBtn">ダークに切替</button><button id="logoutBtn">ログアウト</button></div>
+  </header>
+  <main>
+    <div class="card">
+      <h2>注文一覧</h2>
+      <div class="seg" id="filterSeg">
+        <button type="button" data-v="open" class="on">受付中</button>
+        <button type="button" data-v="new">新規</button>
+        <button type="button" data-v="accepted">対応中</button>
+        <button type="button" data-v="done">完了</button>
+        <button type="button" data-v="all">全部</button>
+      </div>
+      <div class="msg" id="listMsg"></div>
+      <div id="orderList"></div>
+    </div>
+  </main>
+</div>
+<script>
+const SUPABASE_URL = "https://yoqdoerdhjgygocvgkcf.supabase.co";
+const SUPABASE_KEY = "sb_publishable_dkyThIAovPIO-59BlGf86A_f7TExEeq";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const yen = n => "¥" + Math.round(n).toLocaleString("ja-JP");
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* テーマ切替 */
+function applyTheme(t, save){
+  document.documentElement.dataset.theme = t;
+  if (save) { try{ localStorage.setItem("nippo-theme", t); }catch(e){} }
+  document.querySelectorAll(".themeBtn").forEach(b => b.textContent = (t === "dark" ? "ライトに切替" : "ダークに切替"));
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if (mc) mc.setAttribute("content", t === "dark" ? "#1d2733" : "#33475e");
+}
+document.querySelectorAll(".themeBtn").forEach(b => b.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
+}));
+applyTheme(document.documentElement.dataset.theme || "light", false);
+
+/* 料金計算（日報アプリと同仕様） */
+function bandFareGeneral(km){
+  if (km == null || isNaN(km) || km < 0) km = 0;
+  const n = Math.floor(km);
+  if (n <= 20) return 2000 + 300*n;
+  return 8000 + 400*(n-20);
+}
+function bandFareIsland(km){
+  if (km == null || isNaN(km) || km < 0) km = 0;
+  if (km < 2) return 1400;
+  const n = Math.floor(km);
+  if (n <= 9) return 1400 + 200*(n-1);
+  return 3300 + 300*(n-10);
+}
+function calcFare(o){
+  const base = o.fare_type === "island" ? bandFareIsland(o.distance_km) : bandFareGeneral(o.distance_km);
+  let total = base + (o.stopover_min||0)*100 + (o.pickup_fee||0);
+  return total;
+}
+
+/* ログイン */
+async function refreshSession(){
+  const { data } = await sb.auth.getSession();
+  const logged = !!(data && data.session);
+  $("loginRoot").classList.toggle("hidden", logged);
+  $("appRoot").classList.toggle("hidden", !logged);
+  if (logged) loadOrders();
+}
+$("loginBtn").addEventListener("click", async () => {
+  const msg = $("loginMsg"); msg.textContent = ""; msg.className = "msg";
+  const { error } = await sb.auth.signInWithPassword({ email: $("loginEmail").value.trim(), password: $("loginPass").value });
+  if (error){ msg.textContent = "ログインできませんでした"; msg.className = "msg err"; return; }
+  refreshSession();
+});
+$("logoutBtn").addEventListener("click", async () => { await sb.auth.signOut(); refreshSession(); });
+
+/* 注文 */
+let orders = [];
+let firstLoad = true;
+const beepedIds = new Set();
+let audioCtx = null;
+document.addEventListener("pointerdown", () => { if (!audioCtx) { try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }, { once:true });
+function beep(){
+  if (!audioCtx) return;
+  try {
+    const t0 = audioCtx.currentTime;
+    [0, 0.25].forEach(off => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.15, t0+off); g.gain.exponentialRampToValueAtTime(0.001, t0+off+0.2);
+      o.start(t0+off); o.stop(t0+off+0.2);
+    });
+  } catch(e){}
+}
+function filterVal(){ const s = $("filterSeg").querySelector("button.on"); return s ? s.dataset.v : "open"; }
+$("filterSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+  $("filterSeg").querySelectorAll("button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); renderOrders();
+}));
+const ST_LABEL = { new:"新規", accepted:"対応中", done:"完了", cancelled:"取消" };
+async function loadOrders(){
+  const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending:false }).limit(100);
+  if (error){ $("listMsg").textContent = "読み込みに失敗しました"; $("listMsg").className = "msg err"; return; }
+  orders = data || [];
+  let hasNew = false;
+  for (const o of orders){
+    if (o.status === "new" && !beepedIds.has(o.id)){ beepedIds.add(o.id); if (!firstLoad) hasNew = true; }
+  }
+  if (hasNew) beep();
+  firstLoad = false;
+  renderOrders();
+}
+function orderHTML(o){
+  const d = new Date(o.created_at);
+  const when = (d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  let h = '<div class="order'+(o.status==="new"?" isnew":"")+'" data-id="'+o.id+'">';
+  h += '<div class="t1">'+esc(o.customer_name || "（名前なし）")+' 様<span class="badge st-'+o.status+'">'+ST_LABEL[o.status]+'</span>'
+     + (o.island ? '<span class="badge island">島割</span>' : '') + '</div>';
+  h += '<div class="t2">'+when+' 受付／希望：'+esc(o.requested_time || "今すぐ")+'</div>';
+  h += '<div class="route">'+esc(o.pickup)+' → '+esc(o.destination)+'</div>';
+  if (o.phone) h += '<div class="t2">電話：<a class="tel" href="tel:'+esc(o.phone.replace(/[^0-9+]/g,""))+'">'+esc(o.phone)+'</a></div>';
+  if (o.car_info) h += '<div class="t2">車：'+esc(o.car_info)+'</div>';
+  if (o.est_fare) h += '<div class="t2">料金目安：'+yen(o.est_fare)+'</div>';
+  if (o.status === "done" && o.fare) h += '<div class="t2">確定料金：'+yen(o.fare)+'（日報に登録済み）</div>';
+  if (o.memo) h += '<div class="t2">備考：'+esc(o.memo)+'</div>';
+  if (o.status === "new"){
+    h += '<div class="acts"><button class="btn btn-main" data-act="accept">受ける</button><button class="btn btn-danger" data-act="cancel">取消</button></div>';
+  } else if (o.status === "accepted"){
+    h += '<div class="acts"><button class="btn btn-main" data-act="openDone">完了して日報へ</button><button class="btn btn-danger" data-act="cancel">取消</button></div>';
+    h += '<div class="doneWrap hidden">'
+       + '<div class="doneform">'
+       + '<div class="row"><div><label>距離（km）</label><input data-df="distance_km" type="number" step="0.1" min="0" inputmode="decimal"></div>'
+       + '<div><label>立ち寄り（分）</label><input data-df="stopover_min" type="number" min="0" inputmode="numeric" value="0"></div></div>'
+       + '<div class="row"><div><label>料金区分</label><select data-df="fare_type"><option value="general">一般料金</option><option value="island"'+(o.island?" selected":"")+'>島割</option></select></div>'
+       + '<div><label>迎車料金</label><select data-df="pickup_fee"><option value="0">なし</option><option value="500">500円</option><option value="1000">1,000円</option></select></div></div>'
+       + '<div class="row"><div><label>支払い</label><select data-df="payment"><option value="cash">現金</option><option value="card">カード</option><option value="qr">QR決済</option></select></div>'
+       + '<div><label>料金（円）</label><input data-df="fare" type="number" min="0" inputmode="numeric"></div></div>'
+       + '<div style="height:8px"></div>'
+       + '<button class="btn btn-main" data-act="submitDone">この内容で完了・日報に登録</button>'
+       + '<div class="msg" data-dmsg></div>'
+       + '</div></div>';
+  }
+  h += '</div>';
+  return h;
+}
+function renderOrders(){
+  const f = filterVal();
+  const list = orders.filter(o => f === "all" ? true : f === "open" ? (o.status === "new" || o.status === "accepted") : o.status === f);
+  $("orderList").innerHTML = list.length ? list.map(orderHTML).join("") : '<div class="t2" style="color:var(--sub)">該当する注文はありません</div>';
+}
+function findOrder(id){ return orders.find(o => o.id === id); }
+function recalcDoneForm(wrap){
+  const q = f => wrap.querySelector('[data-df="'+f+'"]');
+  const o = { distance_km: parseFloat(q("distance_km").value) || 0, stopover_min: parseInt(q("stopover_min").value) || 0, fare_type: q("fare_type").value, pickup_fee: parseInt(q("pickup_fee").value) || 0 };
+  if (!wrap.dataset.fareOverride) q("fare").value = calcFare(o);
+  return o;
+}
+$("orderList").addEventListener("input", e => {
+  const wrap = e.target.closest(".doneWrap"); if (!wrap) return;
+  if (e.target.dataset.df === "fare") wrap.dataset.fareOverride = "1";
+  recalcDoneForm(wrap);
+});
+$("orderList").addEventListener("click", async e => {
+  const btn = e.target.closest("[data-act]"); if (!btn) return;
+  const card = e.target.closest(".order"); const o = findOrder(card.dataset.id); if (!o) return;
+  const act = btn.dataset.act;
+  if (act === "accept"){
+    btn.disabled = true;
+    await sb.from("orders").update({ status:"accepted", accepted_at: new Date().toISOString() }).eq("id", o.id);
+    loadOrders();
+  } else if (act === "cancel"){
+    if (!confirm("この注文を取り消しますか？")) return;
+    await sb.from("orders").update({ status:"cancelled" }).eq("id", o.id);
+    loadOrders();
+  } else if (act === "openDone"){
+    const wrap = card.querySelector(".doneWrap");
+    wrap.classList.toggle("hidden");
+    if (!wrap.classList.contains("hidden")) recalcDoneForm(wrap);
+  } else if (act === "submitDone"){
+    const wrap = card.querySelector(".doneWrap");
+    const q = f => wrap.querySelector('[data-df="'+f+'"]');
+    const dmsg = wrap.querySelector("[data-dmsg]");
+    const dist = parseFloat(q("distance_km").value) || 0;
+    const fare = parseInt(q("fare").value);
+    if (!dist || isNaN(fare)){ dmsg.textContent = "距離と料金を入れてください"; dmsg.className = "msg err"; return; }
+    btn.disabled = true;
+    const payment = q("payment").value;
+    const fareType = q("fare_type").value;
+    const pickupFee = parseInt(q("pickup_fee").value) || 0;
+    const tags = [];
+    if (payment === "card") tags.push("【クレジット】");
+    if (payment === "qr") tags.push("【QR決済】");
+    if (fareType === "island") tags.push("【島割】");
+    if (pickupFee === 500) tags.push("【迎車500円】");
+    if (pickupFee === 1000) tags.push("【迎車1000円】");
+    const memoParts = ["【アプリ注文】"].concat(tags);
+    if (o.car_info) memoParts.push("車：" + o.car_info);
+    if (o.memo) memoParts.push(o.memo);
+    const trip = {
+      date: todayStr(), customer_name: o.customer_name, car_number: null,
+      pickup: o.pickup, destination: o.destination, start_time: null, end_time: null,
+      distance_km: dist, stopover_min: parseInt(q("stopover_min").value) || 0,
+      fare_type: fareType, pickup_fee: pickupFee, half_price: false,
+      payment: payment, fare: fare, memo: memoParts.join(" ")
+    };
+    const ins = await sb.from("trips").insert(trip);
+    if (ins.error){ dmsg.textContent = "日報への登録に失敗しました"; dmsg.className = "msg err"; btn.disabled = false; return; }
+    await sb.from("orders").update({ status:"done", distance_km: dist, fare: fare, payment: payment, done_at: new Date().toISOString() }).eq("id", o.id);
+    loadOrders();
+  }
+});
+setInterval(() => { if (!$("appRoot").classList.contains("hidden")) loadOrders(); }, 20000);
+refreshSession();
+</script>
+</body>
+</html>

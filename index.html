@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KITAKU運転代行｜ご依頼</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#33475e">
+<script>try{var _t=localStorage.getItem("nippo-theme");if(!_t)_t=(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";document.documentElement.dataset.theme=_t;}catch(e){document.documentElement.dataset.theme="light";}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#3c5a7d;--navy2:#54708f;--bg:#f4f3ef;--card:#fdfdfb;--line:#d8d5cc;--txt:#2e3138;--sub:#6a7078;--green:#3d7a54;--red:#a04a44;--amber:#96702a;--head:#33475e;--chip:#e8ebee;--chiptxt:#3c5a7d;--input:#ffffff;--dangerbg:#f6e3e1}
+html[data-theme="dark"]{--navy:#8fb0d8;--navy2:#33567f;--bg:#17191d;--card:#212429;--line:#3b4048;--txt:#e3e1da;--sub:#9aa1ab;--green:#7fb894;--red:#e08d85;--amber:#dcb26a;--head:#1d2733;--chip:#2b3038;--chiptxt:#cfd6de;--input:#26292f;--dangerbg:#3d2725;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--txt);font-size:15px}
+header{background:var(--head);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+header .ttl{font-weight:700;font-size:17px}
+header button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:8px;padding:5px 10px;font-size:12px}
+main{max-width:680px;margin:0 auto;padding:12px 12px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+h2{font-size:15px;margin:2px 0 10px;color:var(--navy)}
+.row{display:flex;gap:8px}
+.row>*{flex:1;min-width:0}
+label{display:block;font-size:12px;color:var(--sub);margin:8px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:16px;background:var(--input);color:var(--txt)}
+textarea{resize:vertical}
+.btn{display:inline-block;border:none;border-radius:9px;padding:11px 14px;font-size:14px;font-weight:600;cursor:pointer;text-align:center}
+.btn-main{background:var(--navy);color:#fff;width:100%;padding:14px;font-size:16px}
+html[data-theme="dark"] .btn-main{background:var(--navy2)}
+.btn-sub{background:var(--chip);color:var(--chiptxt)}
+.btn-gps{background:var(--navy2);color:#fff;width:100%;padding:8px;font-size:13px;margin-top:6px}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{flex:1;padding:10px 4px;background:var(--input);border:none;font-size:14px;cursor:pointer;color:var(--sub)}
+.seg button.on{background:var(--navy);color:#fff;font-weight:700}
+html[data-theme="dark"] .seg button.on{background:var(--navy2)}
+.msg{font-size:13px;margin:8px 0;min-height:18px}
+.msg.ok{color:var(--green)}.msg.err{color:var(--red)}
+.hidden{display:none!important}
+.est{font-size:18px;font-weight:800;color:var(--navy)}
+.note{font-size:12px;color:var(--sub);line-height:1.6}
+a.tel{color:var(--navy);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <div class="ttl">KITAKU運転代行</div>
+  <button type="button" class="themeBtn">ダークに切替</button>
+</header>
+<main>
+  <div class="card">
+    <h2>運転代行のご依頼</h2>
+    <div class="note">石垣島内全域に対応しています。営業時間 20:00〜翌4:00（日曜のみ翌2:00）、木曜定休＋不定休。<br>
+    アプリが苦手な方は、お電話でも受け付けています：<a class="tel" href="tel:09097895588">090-9789-5588</a></div>
+  </div>
+
+  <div class="card" id="formCard">
+    <h2>依頼フォーム</h2>
+    <label>お名前（任意）</label>
+    <input id="fName" autocomplete="name" placeholder="例：山田">
+    <label>電話番号（必須）</label>
+    <input id="fPhone" type="tel" autocomplete="tel" placeholder="ドライバーから連絡できる番号">
+    <label>迎え場所（必須）</label>
+    <input id="fPickup" placeholder="例：美崎町の○○前、ホテル○○">
+    <button type="button" class="btn btn-gps" id="gpsBtn">現在地を迎え場所にする</button>
+    <label>送り先（必須）</label>
+    <input id="fDest" placeholder="例：真栄里の自宅、白保">
+    <button type="button" class="btn btn-gps" id="geoBtn">送り先から料金の目安を出す</button>
+    <label>希望時刻</label>
+    <div class="seg" id="timeSeg">
+      <button type="button" data-v="now" class="on">今すぐ</button>
+      <button type="button" data-v="reserve">時刻を指定</button>
+    </div>
+    <div id="timeWrap" class="hidden">
+      <label>迎え希望時刻</label>
+      <input id="fTime" type="time">
+    </div>
+    <label>車の情報（任意）</label>
+    <input id="fCar" placeholder="例：白のフィット、ナンバー4058、MT／左ハンドルなど">
+    <label>料金区分</label>
+    <div class="seg" id="islandSeg">
+      <button type="button" data-v="0" class="on">一般料金</button>
+      <button type="button" data-v="1">島割（島にお住まいの方）</button>
+    </div>
+    <label>備考（任意）</label>
+    <textarea id="fMemo" rows="2" placeholder="経由先がある場合は事前にお知らせください"></textarea>
+    <div style="height:10px"></div>
+    <div id="estBox" class="note"></div>
+    <div style="height:6px"></div>
+    <button class="btn btn-main" id="submitBtn">この内容で依頼する</button>
+    <div class="msg" id="formMsg"></div>
+    <div class="note">※送信後、確認のためドライバーからお電話する場合があります。※料金は実際の走行距離で確定します（目安と異なる場合があります）。</div>
+  </div>
+
+  <div class="card hidden" id="doneCard">
+    <h2>受け付けました</h2>
+    <div>受付番号：<b id="doneId"></b></div>
+    <div class="note" style="margin-top:8px">ドライバーが内容を確認して向かいます。混雑状況により、お電話で到着時刻をご連絡する場合があります。そのままお待ちください。</div>
+  </div>
+
+  <div class="card">
+    <h2>料金の目安</h2>
+    <div class="note">
+      一般料金：最初の1kmまで 2,000円、以降 1kmごとに 300円追加（21km以降は1kmごとに400円）。<br>
+      島割：基本 1,400円（2kmまで）、以降 1kmごとに 200円追加（10km以降は300円）。地区により迎車料金（500円／1,000円）がかかる場合があります。<br>
+      コンビニ等への立ち寄り：1分ごとに100円追加。
+    </div>
+  </div>
+</main>
+<script>
+const SUPABASE_URL = "https://yoqdoerdhjgygocvgkcf.supabase.co";
+const SUPABASE_KEY = "sb_publishable_dkyThIAovPIO-59BlGf86A_f7TExEeq";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const yen = n => "¥" + Math.round(n).toLocaleString("ja-JP");
+
+/* テーマ切替 */
+function applyTheme(t, save){
+  document.documentElement.dataset.theme = t;
+  if (save) { try{ localStorage.setItem("nippo-theme", t); }catch(e){} }
+  document.querySelectorAll(".themeBtn").forEach(b => b.textContent = (t === "dark" ? "ライトに切替" : "ダークに切替"));
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if (mc) mc.setAttribute("content", t === "dark" ? "#1d2733" : "#33475e");
+}
+document.querySelectorAll(".themeBtn").forEach(b => b.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
+}));
+applyTheme(document.documentElement.dataset.theme || "light", false);
+
+/* 料金計算（日報アプリと同仕様） */
+function bandFareGeneral(km){
+  if (km == null || isNaN(km) || km < 0) km = 0;
+  const n = Math.floor(km);
+  if (n <= 20) return 2000 + 300*n;
+  return 8000 + 400*(n-20);
+}
+function bandFareIsland(km){
+  if (km == null || isNaN(km) || km < 0) km = 0;
+  if (km < 2) return 1400;
+  const n = Math.floor(km);
+  if (n <= 9) return 1400 + 200*(n-1);
+  return 3300 + 300*(n-10);
+}
+function haversineKm(a, b, c, d){
+  const R = 6371, rad = Math.PI/180;
+  const x = Math.sin((c-a)*rad/2)**2 + Math.cos(a*rad)*Math.cos(c*rad)*Math.sin((d-b)*rad/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+let pickupCoord = null, destCoord = null;
+function segVal(id){ const s = $(id).querySelector("button.on"); return s ? s.dataset.v : null; }
+function wireSeg(id, cb){
+  $(id).querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    $(id).querySelectorAll("button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on"); if (cb) cb();
+  }));
+}
+wireSeg("timeSeg", () => { $("timeWrap").classList.toggle("hidden", segVal("timeSeg") !== "reserve"); });
+wireSeg("islandSeg", refreshEst);
+
+function refreshEst(){
+  const box = $("estBox");
+  if (pickupCoord && destCoord){
+    const road = haversineKm(pickupCoord.lat, pickupCoord.lon, destCoord.lat, destCoord.lon) * 1.35;
+    const fare = segVal("islandSeg") === "1" ? bandFareIsland(road) : bandFareGeneral(road);
+    box.innerHTML = '料金の目安（約' + road.toFixed(1) + 'km想定）：<span class="est">' + yen(fare) + '</span> 前後';
+    box.dataset.estFare = fare; box.dataset.estKm = road.toFixed(1);
+  } else {
+    box.textContent = "";
+    delete box.dataset.estFare; delete box.dataset.estKm;
+  }
+}
+
+$("gpsBtn").addEventListener("click", () => {
+  const btn = $("gpsBtn"); const old = btn.textContent;
+  btn.textContent = "取得中…"; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const {latitude:lat, longitude:lon} = pos.coords;
+      pickupCoord = {lat, lon};
+      const r = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat="+lat+"&lon="+lon+"&zoom=18&addressdetails=1", {headers:{"Accept-Language":"ja"}});
+      const j = await r.json();
+      const a = j.address || {};
+      const parts = [a.state, a.city || a.town || a.village, a.suburb || a.neighbourhood || a.quarter, (a.road||"") + (a.house_number||"")].filter(Boolean);
+      $("fPickup").value = parts.length ? parts.join("") : (j.display_name || "");
+      if (!$("fPickup").value) $("fPickup").value = lat.toFixed(5)+", "+lon.toFixed(5);
+    } catch(e){ alert("住所の取得に失敗しました。迎え場所は文字で入力してください"); }
+    btn.textContent = old; btn.disabled = false; refreshEst();
+  }, () => { alert("位置情報が取得できませんでした。迎え場所は文字で入力してください"); btn.textContent = old; btn.disabled = false; }, {enableHighAccuracy:true, timeout:15000});
+});
+
+$("geoBtn").addEventListener("click", async () => {
+  const q = $("fDest").value.trim();
+  if (!q){ $("formMsg").textContent = "先に送り先を入力してください"; $("formMsg").className = "msg err"; return; }
+  const btn = $("geoBtn"); const old = btn.textContent;
+  btn.textContent = "検索中…"; btn.disabled = true;
+  try {
+    const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=jp&q=" + encodeURIComponent("沖縄県石垣市 " + q), {headers:{"Accept-Language":"ja"}});
+    const j = await r.json();
+    if (j && j.length){ destCoord = {lat: parseFloat(j[0].lat), lon: parseFloat(j[0].lon)}; }
+    else { destCoord = null; alert("送り先の場所が特定できませんでした。目安なしで依頼できます"); }
+  } catch(e){ destCoord = null; alert("検索に失敗しました。目安なしで依頼できます"); }
+  btn.textContent = old; btn.disabled = false; refreshEst();
+});
+
+$("submitBtn").addEventListener("click", async () => {
+  const msg = $("formMsg");
+  const phone = $("fPhone").value.trim();
+  const pickup = $("fPickup").value.trim();
+  const dest = $("fDest").value.trim();
+  if (!phone || !pickup || !dest){
+    msg.textContent = "電話番号・迎え場所・送り先は必須です"; msg.className = "msg err"; return;
+  }
+  const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "送信中…";
+  const reserve = segVal("timeSeg") === "reserve";
+  const oid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === "x" ? r : (r&0x3|0x8)).toString(16); });
+  const row = {
+    id: oid,
+    shop: "kitaku",
+    customer_name: $("fName").value.trim() || null,
+    phone: phone,
+    pickup: pickup,
+    destination: dest,
+    pickup_lat: pickupCoord ? pickupCoord.lat : null,
+    pickup_lon: pickupCoord ? pickupCoord.lon : null,
+    dest_lat: destCoord ? destCoord.lat : null,
+    dest_lon: destCoord ? destCoord.lon : null,
+    car_info: $("fCar").value.trim() || null,
+    requested_time: reserve ? ("時刻指定 " + ($("fTime").value || "")) : "今すぐ",
+    island: segVal("islandSeg") === "1",
+    est_fare: $("estBox").dataset.estFare ? parseInt($("estBox").dataset.estFare) : null,
+    memo: $("fMemo").value.trim() || null
+  };
+  const { error } = await sb.from("orders").insert(row);
+  if (error){
+    msg.textContent = "送信できませんでした。お手数ですがお電話ください：090-9789-5588"; msg.className = "msg err";
+    btn.disabled = false; btn.textContent = "この内容で依頼する"; return;
+  }
+  $("doneId").textContent = oid.slice(0, 8).toUpperCase();
+  $("formCard").classList.add("hidden");
+  $("doneCard").classList.remove("hidden");
+  window.scrollTo({top: 0, behavior: "smooth"});
+});
+</script>
+</body>
+</html>
